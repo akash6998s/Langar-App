@@ -1,15 +1,10 @@
-import { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
+  useLocation,
 } from "react-router-dom";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth, db } from "./firebase";
-import { collection, getDocs } from "firebase/firestore";
 
-// Components
 import Header from "./components/Header";
 import Home from "./pages/Home";
 import Activity from "./components/Activity";
@@ -18,99 +13,49 @@ import Profile from "./components/Profile";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AdminPanel from "./pages/AdminPanel";
-import UploadAllData from "./components/UploadAllData";
+import UploadAllData from "./components/databaseEditCode/UploadAllData";
+import SuperAdmin from "./pages/SuperAdmin";
+import EditDatabase from "./components/databaseEditCode/EditDatabase";
+import RemoveImgFromMembers from "./components/databaseEditCode/removeImgFromAllMembers";
+import UploadExpenseData from "./components/databaseEditCode/UploadExpenseData";
 
-function ProtectedRoute({ user, isApproved, children }) {
-  if (!user || !isApproved) {
-    return <Navigate to="/login" />;
-  }
-  return children;
+function AppRoutes() {
+  const location = useLocation();
+
+  return (
+    <div className="h-screen flex flex-col">
+      {/* Main content area - 90% */}
+      <div className="h-[90vh] overflow-y-auto">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Login />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/activity" element={<Activity />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/admin" element={<AdminPanel />} />
+          <Route path="/superadmin" element={<SuperAdmin />} />
+
+          {/* These route are for upload and managing backup data */}
+          <Route path="/upload-backup" element={<UploadAllData />} />
+          <Route path="/edit-database" element={<EditDatabase />} />
+          <Route path="/remove-img" element={<RemoveImgFromMembers />} />
+          <Route path="/upload-expense" element={<UploadExpenseData />} />
+        </Routes>
+      </div>
+
+      {/* Bottom navbar - 10% */}
+      <div className="h-[10vh]">
+        <Header />
+      </div>
+    </div>
+  );
 }
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [isApproved, setIsApproved] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currUser) => {
-      if (currUser) {
-        const membersRef = collection(db, "members");
-        const snapshot = await getDocs(membersRef);
-
-        let found = false;
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          if (
-            data.email === currUser.email &&
-            data.password && // ensure password is present
-            data.approved === true
-          ) {
-            found = true;
-            // Save to localStorage for later use
-            localStorage.setItem("loggedInMember", JSON.stringify(data));
-          }
-        });
-
-        setUser(currUser);
-        setIsApproved(found);
-      } else {
-        setUser(null);
-        setIsApproved(false);
-        localStorage.removeItem("loggedInMember");
-      }
-
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  if (loading) {
-    return <div className="text-center mt-20 text-xl font-semibold">Loading...</div>;
-  }
-
   return (
     <Router>
-      {user && isApproved && <Header />}
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute user={user} isApproved={isApproved}>
-              <Home />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/activity"
-          element={
-            <ProtectedRoute user={user} isApproved={isApproved}>
-              <Activity />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/members"
-          element={
-            <ProtectedRoute user={user} isApproved={isApproved}>
-              <Members />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute user={user} isApproved={isApproved}>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/stthbudsujdsuj" element={<UploadAllData />} />
-      </Routes>
+      <AppRoutes />
     </Router>
   );
 }

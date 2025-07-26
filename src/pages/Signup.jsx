@@ -81,7 +81,7 @@ function Signup() {
       });
 
       alert("✅ Signup successful. Please wait for admin approval.");
-      navigate("/login");
+      navigate("/");
     } catch (err) {
       alert("Signup error: " + err.message);
     }

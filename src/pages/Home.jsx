@@ -1,9 +1,10 @@
 import AttendanceSheet from "../components/AttendanceSheet";
+import Summary from "../components/Summary";
 
 function Home() {
   return (
     <div>
-      <h2>Welcome to Home Page (Only for Approved Users)</h2>
+      <Summary/>
       <AttendanceSheet />
     </div>
   );

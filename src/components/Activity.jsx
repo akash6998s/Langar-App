@@ -1,83 +1,137 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 const months = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
 ];
 
-const years = Array.from({ length: 11 }, (_, i) => 2025 + i); // 2025–2035
+const years = Array.from({ length: 11 }, (_, i) => String(2025 + i)); // Store as strings for consistency with select value
 
-// maxDays is a constant because the table headers always show up to 31 days.
-// It does not need to be part of React state if it's not going to change.
-const maxDays = 31; // For consistent table headers displaying up to 31 days
+const MAX_DAYS_IN_MONTH = 31; // Constant for consistent table headers
 
 const Activity = () => {
-  const [selectedYear, setSelectedYear] = useState("2025");
-  const [memberData, setMemberData] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear())); // Default to current year or "2025"
+  const [memberAttendance, setMemberAttendance] = useState(null); // Rename to reflect its content better
 
+  // Use useEffect to read from localStorage only once on mount
   useEffect(() => {
-    const stored = localStorage.getItem("loggedInMember");
-    if (stored) {
-      setMemberData(JSON.parse(stored));
+    try {
+      const stored = localStorage.getItem("loggedInMember");
+      if (stored) {
+        const parsedData = JSON.parse(stored);
+        // We're only interested in the attendance data for this component
+        setMemberAttendance(parsedData.attendance || {});
+      }
+    } catch (error) {
+      console.error("Error parsing member data from localStorage:", error);
+      setMemberAttendance({}); // Fallback to empty object on error
     }
-  }, []); // Empty dependency array means this runs once on component mount
+  }, []);
+
+  // Memoize the attendance data for the selected year to prevent re-calculations
+  // unless selectedYear or memberAttendance changes.
+  const currentYearAttendance = useMemo(() => {
+    return memberAttendance?.[selectedYear] || {};
+  }, [memberAttendance, selectedYear]);
 
   return (
     <div className="p-4 overflow-auto">
-      <h2 className="text-2xl font-bold mb-4 text-center">Activity Sheet</h2>
+      <h2 className="text-2xl font-bold mb-4 text-center">Your Activity Sheet</h2>
 
       {/* Year Selector */}
       <div className="flex justify-center mb-4">
+        <label htmlFor="year-select" className="sr-only">Select Year</label>
         <select
+          id="year-select"
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
-          className="border px-3 py-2 rounded"
+          className="border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {years.map((year) => (
-            <option key={year}>{year}</option>
+            <option key={year} value={year}>
+              {year}
+            </option>
           ))}
         </select>
       </div>
 
       {/* Attendance Table */}
-      <div className="overflow-auto">
-        <table className="table-auto border border-gray-300 w-full text-sm">
-          <thead className="bg-gray-100">
+      <div className="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
             <tr>
-              <th className="border px-2 py-1">Month</th>
-              {/* Generate 31 day headers */}
-              {Array.from({ length: maxDays }, (_, i) => (
-                <th key={i + 1} className="border px-2 py-1 text-center">{i + 1}</th>
+              <th scope="col" className="px-3 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                Month
+              </th>
+              {Array.from({ length: MAX_DAYS_IN_MONTH }, (_, i) => (
+                <th
+                  key={i + 1}
+                  scope="col"
+                  className="px-2 py-2 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider"
+                >
+                  {i + 1}
+                </th>
               ))}
             </tr>
           </thead>
-          <tbody>
-            {months.map((month) => {
-              // Calculate days in the current month and selected year
-              const daysInMonth = new Date(Number(selectedYear), months.indexOf(month) + 1, 0).getDate();
+          <tbody className="bg-white divide-y divide-gray-200">
+            {memberAttendance === null ? (
+              <tr>
+                <td colSpan={MAX_DAYS_IN_MONTH + 1} className="text-center py-4 text-gray-500">
+                  Loading activity data...
+                </td>
+              </tr>
+            ) : (
+              months.map((month) => {
+                const monthIndex = months.indexOf(month);
+                // Calculate actual days in the current month/year for accurate rendering
+                const daysInMonth = new Date(Number(selectedYear), monthIndex + 1, 0).getDate();
 
-              // Safely access attendance data, defaulting to an empty array if not found
-              const attendanceDays =
-                memberData?.attendance?.[selectedYear]?.[month] || [];
+                // Get attendance days for the specific month
+                const attendanceForMonth = currentYearAttendance[month] || [];
 
-              return (
-                <tr key={month}>
-                  <td className="border px-2 py-1 font-medium">{month}</td>
-                  {/* Iterate up to maxDays for consistent columns */}
-                  {Array.from({ length: maxDays }, (_, i) => (
-                    <td key={i + 1} className="border px-2 py-1 text-center">
-                      {/* Only display checkmark if day exists in month AND is in attendance */}
-                      {i + 1 <= daysInMonth && attendanceDays.includes(i + 1)
-                        ? "✔️"
-                        : ""}
+                return (
+                  <tr key={month}>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                      {month}
                     </td>
-                  ))}
-                </tr>
-              );
-            })}
+                    {Array.from({ length: MAX_DAYS_IN_MONTH }, (_, i) => {
+                      const dayNumber = i + 1;
+                      const isAttended = attendanceForMonth.includes(dayNumber);
+                      const isDayInMonth = dayNumber <= daysInMonth;
+
+                      return (
+                        <td
+                          key={dayNumber}
+                          className={`px-2 py-2 whitespace-nowrap text-center text-sm ${
+                            isDayInMonth && isAttended
+                              ? "text-green-600 font-bold"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {isDayInMonth && isAttended ? "✔" : ""}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* Message if no data is found */}
+      {memberAttendance && Object.keys(memberAttendance).length === 0 && (
+        <p className="text-center text-gray-500 mt-6">
+          No activity data found. Please ensure you are logged in correctly.
+        </p>
+      )}
+      {memberAttendance && Object.keys(currentYearAttendance).length === 0 && (
+        <p className="text-center text-gray-500 mt-2">
+          No activity recorded for {selectedYear}.
+        </p>
+      )}
     </div>
   );
 };

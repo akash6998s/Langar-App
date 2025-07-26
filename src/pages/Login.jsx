@@ -33,7 +33,6 @@ function Login() {
         const memberObj = { id: docSnap.id, ...data };
         allMembers.push(memberObj);
 
-        // Match logged-in user
         if (data.email === email && data.password === password) {
           approvedMember = memberObj;
         }
@@ -45,16 +44,24 @@ function Login() {
         return;
       }
 
-      // Save logged-in member to localStorage
-      localStorage.setItem("loggedInMember", JSON.stringify(approvedMember));
+      // ✅ Fetch expenses document and save to sessionStorage
+      const expenseDocRef = doc(db, "expenses", "hPTZ3pkljqT2yuiKLDA3");
+      const expenseDocSnap = await getDoc(expenseDocRef);
 
-      // Save all members to sessionStorage
+      if (expenseDocSnap.exists()) {
+        const expensesData = expenseDocSnap.data();
+        sessionStorage.setItem("expenses", JSON.stringify(expensesData));
+      } else {
+        console.warn("⚠️ No expenses data found.");
+        sessionStorage.setItem("expenses", JSON.stringify({}));
+      }
+
+      // Save member & members list
+      localStorage.setItem("loggedInMember", JSON.stringify(approvedMember));
       sessionStorage.setItem("allMembers", JSON.stringify(allMembers));
 
       alert("✅ Login successful!");
-
-      // Navigate to home
-      navigate("/", { replace: true });
+      navigate("/home", { replace: true });
     } catch (err) {
       alert("Login error: " + err.message);
     }
