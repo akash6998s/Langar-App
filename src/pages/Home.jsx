@@ -4,7 +4,6 @@ import Summary from "../components/Summary";
 function Home() {
   return (
     <div>
-      <Summary/>
       <AttendanceSheet />
     </div>
   );

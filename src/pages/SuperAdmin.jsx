@@ -3,12 +3,14 @@ import ManageAttendance from "../components/ManageAttendance";
 import ManageDonation from "../components/ManageDonation";
 import ManageExpense from "../components/ManageExpense";
 import Managemember from "../components/Managemember";
+import ManageFinance from "../components/ManageFinance"; // Import the new component
 
 const navItems = [
   { name: "Manage Member", key: "member", icon: "group" },
   { name: "Manage Attendance", key: "attendance", icon: "fact_check" },
   { name: "Manage Donations", key: "donations", icon: "volunteer_activism" },
   { name: "Manage Expense", key: "expense", icon: "money_off" },
+  { name: "Manage Finance", key: "finance", icon: "currency_exchange" }, // Added Manage Finance
 ];
 
 const SuperAdmin = () => {
@@ -27,6 +29,8 @@ const SuperAdmin = () => {
         return <ManageDonation />;
       case "expense":
         return <ManageExpense />;
+      case "finance": // New case for ManageFinance
+        return <ManageFinance />;
       default:
         return <div>Select a section from the sidebar</div>;
     }

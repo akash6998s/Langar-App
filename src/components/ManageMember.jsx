@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import { db, storage } from "../firebase"; // Assuming `storage` is exported from firebase.js
+import { db } from "../firebase";
 import { doc, updateDoc, setDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Import Firebase Storage functions
 
 const Managemember = () => {
   const [members, setMembers] = useState([]);
@@ -9,7 +8,6 @@ const Managemember = () => {
   const [selectedRollNo, setSelectedRollNo] = useState("");
   const [memberData, setMemberData] = useState(null);
   const [message, setMessage] = useState("");
-  const [memberImageFile, setMemberImageFile] = useState(null); // New state for the image file
 
   useEffect(() => {
     const stored = sessionStorage.getItem("allMembers");
@@ -31,7 +29,6 @@ const Managemember = () => {
   const handleRollChange = (rollNo) => {
     setSelectedRollNo(rollNo);
     setMessage("");
-    setMemberImageFile(null); // Clear image file when changing roll number
 
     const isNew = String(rollNo) === String(getMaxRollNo() + 1);
     if (isNew) {
@@ -43,7 +40,6 @@ const Managemember = () => {
         phone_no: "",
         address: "",
         roll_no: rollNo,
-        img: "", // Initialize img field
       });
     } else {
       // Load from existing
@@ -58,44 +54,21 @@ const Managemember = () => {
     setMemberData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // New function to handle image file selection
-  const handleImageChange = (e) => {
-    if (e.target.files[0]) {
-      setMemberImageFile(e.target.files[0]);
-    }
-  };
-
   const handleSave = async () => {
     if (!memberData?.roll_no) return;
 
     try {
       const id = memberData.id || memberData.roll_no.toString();
-      const refDoc = doc(db, "members", id);
-      let imageUrl = memberData.img || ""; // Existing image URL
-
-      // If a new image file is selected, upload it to Firebase Storage
-      if (memberImageFile) {
-        setMessage("Uploading image...");
-        const imageRef = ref(
-          storage,
-          `member_pictures/${memberImageFile.name}`
-        );
-        const snapshot = await uploadBytes(imageRef, memberImageFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
-        setMessage("Image uploaded. Saving member data...");
-      }
-
+      const ref = doc(db, "members", id);
       const dataToSave = {
         ...memberData,
         id: id,
         roll_no: memberData.roll_no,
-        img: imageUrl, // Save the image URL
       };
 
-      await setDoc(refDoc, dataToSave, { merge: true });
+      await setDoc(ref, dataToSave, { merge: true });
 
       setMessage("✅ Member saved successfully.");
-      setMemberImageFile(null); // Clear the file input after saving
     } catch (err) {
       console.error("Save error:", err);
       setMessage("❌ Error saving member.");
@@ -105,20 +78,14 @@ const Managemember = () => {
   const handleDelete = async () => {
     if (!selectedRollNo) return;
 
-    const member = members.find(
-      (m) => String(m.roll_no) === String(selectedRollNo)
-    );
+    const member = members.find((m) => String(m.roll_no) === String(selectedRollNo));
     if (!member || !member.id) {
       setMessage("❌ Member not found.");
       return;
     }
 
     try {
-      const refDoc = doc(db, "members", member.id);
-      // It's generally better practice to set specific fields to null or empty
-      // rather than deleting them if you want to retain the document structure.
-      // If you truly want to remove the field, you'd use `deleteField` from `firebase/firestore`.
-      // For this case, let's set it to empty string/object as per your original delete logic.
+      const ref = doc(db, "members", member.id);
       const fieldsToDelete = {
         name: "",
         last_name: "",
@@ -131,12 +98,10 @@ const Managemember = () => {
         isAdmin: false,
         isSuperAdmin: false,
         password: "",
-        img: "", // Clear the image URL on delete
+        img: "",
       };
-      await updateDoc(refDoc, fieldsToDelete);
+      await updateDoc(ref, fieldsToDelete);
       setMessage("🗑️ Member details deleted (roll number retained).");
-      setMemberData(null); // Clear form after deletion
-      setSelectedRollNo(""); // Reset selected roll number
     } catch (err) {
       console.error("Delete error:", err);
       setMessage("❌ Error deleting member.");
@@ -156,13 +121,8 @@ const Managemember = () => {
             setSelectedRollNo("");
             setMemberData(null);
             setMessage("");
-            setMemberImageFile(null);
           }}
-          className={`px-4 py-2 rounded-l ${
-            selectedTab === "add"
-              ? "bg-indigo-600 text-white"
-              : "bg-gray-200"
-          }`}
+          className={`px-4 py-2 rounded-l ${selectedTab === "add" ? "bg-indigo-600 text-white" : "bg-gray-200"}`}
         >
           Add Member
         </button>
@@ -172,13 +132,8 @@ const Managemember = () => {
             setSelectedRollNo("");
             setMemberData(null);
             setMessage("");
-            setMemberImageFile(null);
           }}
-          className={`px-4 py-2 rounded-r ${
-            selectedTab === "delete"
-              ? "bg-indigo-600 text-white"
-              : "bg-gray-200"
-          }`}
+          className={`px-4 py-2 rounded-r ${selectedTab === "delete" ? "bg-indigo-600 text-white" : "bg-gray-200"}`}
         >
           Delete Member
         </button>
@@ -192,13 +147,11 @@ const Managemember = () => {
           className="w-full border px-3 py-2 rounded"
         >
           <option value="">-- Select --</option>
-          {(selectedTab === "add" ? addTabRolls : deleteTabRolls)
-            .sort((a, b) => a - b)
-            .map((roll) => (
-              <option key={roll} value={roll}>
-                {roll}
-              </option>
-            ))}
+          {(selectedTab === "add" ? addTabRolls : deleteTabRolls).sort((a, b) => a - b).map((roll) => (
+            <option key={roll} value={roll}>
+              {roll}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -210,8 +163,6 @@ const Managemember = () => {
               className="w-full border px-3 py-2 rounded"
               value={memberData.name || ""}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              // This condition makes the input read-only if you're in the "add" tab and
-              // selecting an *existing* roll number. For new roll numbers, it's editable.
               readOnly={selectedTab === "add" && String(selectedRollNo) <= maxRoll}
             />
           </div>
@@ -253,37 +204,6 @@ const Managemember = () => {
             ></textarea>
           </div>
 
-          {/* New field for Member Picture */}
-          <div>
-            <label className="block text-sm">Member Picture</label>
-            <input
-              type="file"
-              accept="image/*"
-              className="w-full border px-3 py-2 rounded"
-              onChange={handleImageChange}
-            />
-            {(memberImageFile || memberData.img) && (
-              <div className="mt-2">
-                <p className="text-sm text-gray-600">Current Picture:</p>
-                {memberImageFile ? (
-                  <img
-                    src={URL.createObjectURL(memberImageFile)}
-                    alt="New Member"
-                    className="mt-1 max-w-xs h-auto rounded-md"
-                  />
-                ) : (
-                  memberData.img && (
-                    <img
-                      src={memberData.img}
-                      alt="Current Member"
-                      className="mt-1 max-w-xs h-auto rounded-md"
-                    />
-                  )
-                )}
-              </div>
-            )}
-          </div>
-
           {selectedTab === "add" && (
             <button
               onClick={handleSave}
@@ -303,13 +223,7 @@ const Managemember = () => {
           )}
 
           {message && (
-            <p
-              className={`text-sm mt-2 ${
-                message.includes("✅") || message.includes("🗑️")
-                  ? "text-green-600"
-                  : "text-red-600"
-              }`}
-            >
+            <p className={`text-sm mt-2 ${message.includes("✅") || message.includes("🗑️") ? "text-green-600" : "text-red-600"}`}>
               {message}
             </p>
           )}
